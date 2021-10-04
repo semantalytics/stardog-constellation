@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+if ! [ -x "$(command -v ipfs)" ]
+then
+    echo "Error: ipfs is not installed or could not be found" >&2
+    exit 1
+fi
+
+command=$1
+cid=$2
+
+case $command in
+	add)
+	property_file_cid=$(ipfs resolve ${cid}/properties)
+
+	data_source_name=$(sed -e 's#/\(.*\)/\(.*\)#\1_\2#g' <(echo $property_file_cid))
+
+	echo "Data source name $data_source_name"
+
+	stardog-admin data-source add --name $data_source_name <(ipfs cat $property_file_cid)
+
+	format=$(ipfs dag get ${cid}/mapping/type | tr -d '"')
+
+	name=$(ipfs dag get ${cid}/name | tr -d '"')
+
+	# Need to check if name is already taken
+
+	TEMP=$(mktemp --suffix=.ttl)
+
+	ipfs cat ${cid}/mapping/file > $TEMP
+
+	stardog-admin virtual add --format stardog --name $name --data-source $data_source_name $TEMP
+	;;
+
+	*)
+	echo "unknown command \"${command}\""
+	;;
+esac
+
+# add <ipfs path>
+
+
+#            add: [ {-o | --overwrite} ] [ {-n | --name} <virtual graph name> ] [ {-f | --format} <mappings format> ]
+#                    [ {-d | --database} <db> ] [ {-s | --data-source} <data source> ]
+#
+#            import: [ {-s | --data-source} <data source> ] [ {-f | --format} <Mappings format> ]
+#                    [ {-g | --named-graph} <named graph> ] [ --remove-all ]
+#
+#            list:
+#
+#            mappings: [ {-f | --format} <Mappings format> ]
+#
+#            online:
+#
+#            options:
+#
+#            remove:
+#
+#            source_metadata:
+
